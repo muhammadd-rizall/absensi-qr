@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Repositories\Interfaces;
+
+interface EloquentRepositoryInterface
+{
+    public function all(array $relations = [] );
+    public function allTrashed(array $relations = [] );
+    public function find($id, array $relations = [] );
+    public function findTrashed($id, array$relations = [] );
+    public function create(array $data);
+    public function update($id, array $data);
+    public function delete($id);
+    public function getDeleted();
+    public function restore($id);
+    public function forceDelete($id);
+    public function sendResponse($result, $message, $code = 200);
+    public function sendError($error, $errorMessages = [], $code = 404);
+}
