@@ -1,29 +1,62 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 export default function Scan({ auth, teachings }) {
     const [selectedTeaching, setSelectedTeaching] = useState('');
     const [lastScanned, setLastScanned] = useState(null);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
-    const [isScanning, setIsSidebarOpen] = useState(true);
+    const [isCameraActive, setIsCameraActive] = useState(false);
     const inputRef = useRef(null);
+    const scannerRef = useRef(null);
 
-    const { data, setData, post, processing } = useForm({
+    const { data, setData } = useForm({
         barcode_code: '',
         teaching_id: '',
     });
 
     useEffect(() => {
-        if (selectedTeaching) {
+        if (selectedTeaching && !isCameraActive) {
             inputRef.current?.focus();
         }
-    }, [selectedTeaching]);
+    }, [selectedTeaching, isCameraActive]);
 
-    const handleScan = async (e) => {
-        e.preventDefault();
+    useEffect(() => {
+        if (isCameraActive && selectedTeaching) {
+            const scanner = new Html5QrcodeScanner('reader', {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+            }, false);
+
+            scanner.render(onScanSuccess, onScanFailure);
+            scannerRef.current = scanner;
+
+            return () => {
+                if (scannerRef.current) {
+                    scannerRef.current.clear().catch(error => {
+                        console.error("Failed to clear scanner: ", error);
+                    });
+                }
+            };
+        }
+    }, [isCameraActive, selectedTeaching]);
+
+    const onScanSuccess = async (decodedText) => {
+        if (scannerRef.current) {
+            // Optional: Pause or stop scanner to avoid multiple scans in one go
+            // scannerRef.current.pause(); 
+        }
+        await processBarcode(decodedText);
+    };
+
+    const onScanFailure = (error) => {
+        // console.warn(`Code scan error = ${error}`);
+    };
+
+    const processBarcode = async (barcode) => {
         setError(null);
         setSuccess(null);
 
@@ -34,7 +67,7 @@ export default function Scan({ auth, teachings }) {
 
         try {
             const response = await axios.post(route('teacher.process-scan'), {
-                barcode_code: data.barcode_code,
+                barcode_code: barcode,
                 teaching_id: selectedTeaching
             });
 
@@ -42,13 +75,31 @@ export default function Scan({ auth, teachings }) {
                 setSuccess(response.data.message);
                 setLastScanned(response.data.student);
                 setData('barcode_code', '');
-                inputRef.current?.focus();
+                
+                // Vibrate if supported
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+                
+                // If scanner is active, we can resume scanning after a delay
+                if (isCameraActive && scannerRef.current) {
+                    // setTimeout(() => scannerRef.current.resume(), 2000);
+                }
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Terjadi kesalahan saat memproses scan.');
             setData('barcode_code', '');
-            inputRef.current?.focus();
+            
+            // Short vibrate for error
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+            }
         }
+    };
+
+    const handleManualScan = async (e) => {
+        e.preventDefault();
+        await processBarcode(data.barcode_code);
     };
 
     return (
@@ -66,11 +117,16 @@ export default function Scan({ auth, teachings }) {
                         
                         <select 
                             value={selectedTeaching}
-                            onChange={(e) => setSelectedTeaching(e.target.value)}
+                            onChange={(e) => {
+                                setSelectedTeaching(e.target.value);
+                                setSuccess(null);
+                                setError(null);
+                                setLastScanned(null);
+                            }}
                             className="mt-6 w-full bg-indigo-700 border-indigo-500 text-white rounded-2xl py-4 focus:ring-white focus:border-white font-bold"
                         >
                             <option value="">-- Pilih Mata Pelajaran & Kelas --</option>
-                            {teachings.map(t => (
+                            {teachings.data?.map(t => (
                                 <option key={t.id} value={t.id}>{t.subject?.name} - {t.class?.name} ({t.start_time})</option>
                             ))}
                         </select>
@@ -79,28 +135,56 @@ export default function Scan({ auth, teachings }) {
                     <div className="p-8">
                         {selectedTeaching ? (
                             <div className="space-y-8">
-                                <div className="text-center">
-                                    <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 border-2 border-indigo-100 shadow-inner">
-                                        <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m0 11v1m5-10v1m0 8v1m-9-4h1m8 0h1m-10 0a2 2 0 012-2h8a2 2 0 012 2v3a2 2 0 01-2 2H7a2 2 0 01-2-2v-3a2 2 0 012-2z" />
-                                        </svg>
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                        <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Sistem Presensi Aktif</h4>
                                     </div>
-                                    <h4 className="text-lg font-black text-gray-900">Siap Menerima Scan</h4>
-                                    <p className="text-sm text-gray-500 font-medium">Gunakan alat scanner atau ketik kode manual di bawah.</p>
+                                    <button
+                                        onClick={() => setIsCameraActive(!isCameraActive)}
+                                        className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                                            isCameraActive 
+                                            ? 'bg-red-50 text-red-600 border border-red-100' 
+                                            : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                                        }`}
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        <span>{isCameraActive ? 'Tutup Kamera' : 'Buka Kamera'}</span>
+                                    </button>
                                 </div>
 
-                                <form onSubmit={handleScan} className="relative">
-                                    <input
-                                        ref={inputRef}
-                                        type="text"
-                                        value={data.barcode_code}
-                                        onChange={e => setData('barcode_code', e.target.value)}
-                                        className="w-full bg-gray-50 border-gray-200 rounded-2xl py-5 px-6 text-center text-2xl font-black tracking-widest focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-300"
-                                        placeholder="KODE BARCODE"
-                                        autoComplete="off"
-                                    />
-                                    <button type="submit" className="hidden">Submit</button>
-                                </form>
+                                {isCameraActive ? (
+                                    <div className="overflow-hidden rounded-2xl border-2 border-dashed border-indigo-200 bg-gray-50 p-2">
+                                        <div id="reader" className="w-full"></div>
+                                        <p className="text-center text-xs text-gray-500 font-medium py-3">Posisikan QR Code siswa di tengah kotak scan.</p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4">
+                                        <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 border-2 border-indigo-100 shadow-inner">
+                                            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m0 11v1m5-10v1m0 8v1m-9-4h1m8 0h1m-10 0a2 2 0 012-2h8a2 2 0 012 2v3a2 2 0 01-2 2H7a2 2 0 01-2-2v-3a2 2 0 012-2z" />
+                                            </svg>
+                                        </div>
+                                        <h4 className="text-lg font-black text-gray-900">Siap Menerima Scan</h4>
+                                        <p className="text-sm text-gray-500 font-medium mb-6">Gunakan alat scanner atau buka kamera di atas.</p>
+
+                                        <form onSubmit={handleManualScan} className="relative max-w-sm mx-auto">
+                                            <input
+                                                ref={inputRef}
+                                                type="text"
+                                                value={data.barcode_code}
+                                                onChange={e => setData('barcode_code', e.target.value)}
+                                                className="w-full bg-gray-50 border-gray-200 rounded-2xl py-5 px-6 text-center text-2xl font-black tracking-widest focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-300"
+                                                placeholder="KODE QR/BARCODE"
+                                                autoComplete="off"
+                                            />
+                                            <button type="submit" className="hidden">Submit</button>
+                                        </form>
+                                    </div>
+                                )}
 
                                 {/* Alerts */}
                                 {success && (
@@ -168,6 +252,19 @@ export default function Scan({ auth, teachings }) {
                 }
                 .animate-shake {
                     animation: shake 0.2s ease-in-out 0s 2;
+                }
+                #reader button {
+                    background-color: #4f46e5 !important;
+                    color: white !important;
+                    padding: 0.5rem 1rem !important;
+                    border-radius: 0.75rem !important;
+                    font-weight: bold !important;
+                    border: none !important;
+                    cursor: pointer !important;
+                    margin-top: 10px !important;
+                }
+                #reader img {
+                    display: none !important;
                 }
             `}} />
         </AuthenticatedLayout>

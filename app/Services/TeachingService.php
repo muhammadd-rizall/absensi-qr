@@ -15,12 +15,12 @@ class TeachingService
 
     public function getAll()
     {
-        return $this->teachingRepository->all(['teacher', 'subject', 'class']);
+        return $this->teachingRepository->all(['teacher.user', 'subject', 'schoolClass']);
     }
 
     public function find($id)
     {
-        return $this->teachingRepository->find($id, ['teacher', 'subject', 'class']);
+        return $this->teachingRepository->find($id, ['teacher.user', 'subject', 'schoolClass']);
     }
 
     public function create(array $data)

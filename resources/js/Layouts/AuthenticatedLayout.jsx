@@ -98,6 +98,17 @@ export default function AuthenticatedLayout({ header, children }) {
             ),
             show: can('manage-subjects')
         },
+        {
+            label: 'Jadwal Mengajar',
+            href: route('teachings.index'),
+            active: route().current('teachings.*'),
+            icon: (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            ),
+            show: can('manage-classes')
+        },
         { type: 'divider', label: 'Kehadiran', show: can('view-attendance-reports') },
         {
             label: 'Presensi',

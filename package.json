@@ -23,6 +23,8 @@
         "vite": "^7.0.7"
     },
     "dependencies": {
-        "qrcode.react": "^4.2.0"
+        "html5-qrcode": "^2.3.8",
+        "qrcode.react": "^4.2.0",
+        "react-camera-pro": "^1.4.0"
     }
 }

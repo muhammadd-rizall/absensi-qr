@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ClassRequest;
 use App\Http\Resources\ClassResource;
+use App\Http\Resources\TeacherResource;
 use App\Services\ClassService;
 use App\Services\AcademicYearService;
 use App\Services\TeacherService;
@@ -30,7 +31,7 @@ class ClassController extends Controller
         return Inertia::render('Classes/Index', [
             'classes' => ClassResource::collection($this->classService->getAll()),
             'academicYears' => $this->academicYearService->getAll(),
-            'teachers' => $this->teacherService->getAll(),
+            'teachers' => TeacherResource::collection($this->teacherService->getAll()),
         ]);
     }
 

@@ -14,12 +14,16 @@ class TeachingResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        if (!$this->resource) {
+            return [];
+        }
+
         return [
             'id' => $this->id,
             'teacher' => new TeacherResource($this->whenLoaded('teacher')),
             'subject' => new SubjectResource($this->whenLoaded('subject')),
-            'class' => new ClassResource($this->whenLoaded('class')),
-            'day' => $this->day,
+            'class' => new ClassResource($this->whenLoaded('schoolClass')),
+            'day' => $this->day_of_week,
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,
             'created_at' => $this->created_at,

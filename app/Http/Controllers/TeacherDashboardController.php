@@ -7,6 +7,7 @@ use App\Models\Classes;
 use App\Models\ClassStudents;
 use App\Models\Students;
 use App\Models\Teachings;
+use App\Http\Resources\TeachingResource;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -17,6 +18,14 @@ class TeacherDashboardController extends Controller
         $user = auth()->user();
         $teacher = $user->teacher;
 
+        // If Super Admin, show everything or specific stats
+        if ($user->hasRole('super-admin')) {
+            $teachings = Teachings::with(['schoolClass', 'subject', 'teacher.user'])->get();
+            return Inertia::render('Teacher/Dashboard', [
+                'teachings' => TeachingResource::collection($teachings),
+            ]);
+        }
+
         if (!$teacher) {
             return Inertia::render('Dashboard', [
                 'stats' => ['error' => 'Anda tidak terdaftar sebagai Guru.']
@@ -25,17 +34,17 @@ class TeacherDashboardController extends Controller
 
         // Get teachings/classes for this teacher
         $teachings = Teachings::where('teacher_id', $teacher->id)
-            ->with(['class', 'subject'])
+            ->with(['schoolClass', 'subject'])
             ->get();
 
         return Inertia::render('Teacher/Dashboard', [
-            'teachings' => $teachings,
+            'teachings' => TeachingResource::collection($teachings),
         ]);
     }
 
     public function showClass(string $classId)
     {
-        $class = Classes::with(['academicYear', 'homeroomTeacher'])->findOrFail($classId);
+        $class = Classes::with(['academicYear', 'homeroomTeacher.user'])->findOrFail($classId);
         
         $students = ClassStudents::where('class_id', $classId)
             ->with('student')
@@ -53,12 +62,24 @@ class TeacherDashboardController extends Controller
         $user = auth()->user();
         $teacher = $user->teacher;
 
+        // Super Admin can see all teachings to scan for any class
+        if ($user->hasRole('super-admin')) {
+            $teachings = Teachings::with(['schoolClass', 'subject', 'teacher.user'])->get();
+            return Inertia::render('Teacher/Scan', [
+                'teachings' => TeachingResource::collection($teachings),
+            ]);
+        }
+
+        if (!$teacher) {
+            return redirect()->route('dashboard')->with('error', 'Anda tidak terdaftar sebagai guru.');
+        }
+
         $teachings = Teachings::where('teacher_id', $teacher->id)
-            ->with(['class', 'subject'])
+            ->with(['schoolClass', 'subject'])
             ->get();
 
         return Inertia::render('Teacher/Scan', [
-            'teachings' => $teachings,
+            'teachings' => TeachingResource::collection($teachings),
         ]);
     }
 

@@ -15,12 +15,12 @@ class ClassService
 
     public function getAll()
     {
-        return $this->classRepository->all(['academicYear', 'homeroomTeacher']);
+        return $this->classRepository->all(['academicYear', 'homeroomTeacher.user']);
     }
 
     public function find($id)
     {
-        return $this->classRepository->find($id, ['academicYear', 'homeroomTeacher']);
+        return $this->classRepository->find($id, ['academicYear', 'homeroomTeacher.user']);
     }
 
     public function create(array $data)
