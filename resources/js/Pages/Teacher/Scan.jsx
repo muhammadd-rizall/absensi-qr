@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
 export default function Scan({ auth, teachings }) {
     const [selectedTeaching, setSelectedTeaching] = useState('');
@@ -10,8 +10,11 @@ export default function Scan({ auth, teachings }) {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
     const [isCameraActive, setIsCameraActive] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
     const inputRef = useRef(null);
-    const scannerRef = useRef(null);
+    const html5QrCodeRef = useRef(null);
+    const lastScannedCodeRef = useRef(null);
+    const scanCooldownRef = useRef(false);
 
     const { data, setData } = useForm({
         barcode_code: '',
@@ -26,34 +29,66 @@ export default function Scan({ auth, teachings }) {
 
     useEffect(() => {
         if (isCameraActive && selectedTeaching) {
-            const scanner = new Html5QrcodeScanner('reader', {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-            }, false);
-
-            scanner.render(onScanSuccess, onScanFailure);
-            scannerRef.current = scanner;
-
-            return () => {
-                if (scannerRef.current) {
-                    scannerRef.current.clear().catch(error => {
-                        console.error("Failed to clear scanner: ", error);
-                    });
-                }
-            };
+            startScanner();
+        } else {
+            stopScanner();
         }
+
+        return () => stopScanner();
     }, [isCameraActive, selectedTeaching]);
 
-    const onScanSuccess = async (decodedText) => {
-        if (scannerRef.current) {
-            // Optional: Pause or stop scanner to avoid multiple scans in one go
-            // scannerRef.current.pause(); 
+    const startScanner = async () => {
+        try {
+            const html5QrCode = new Html5Qrcode("reader");
+            html5QrCodeRef.current = html5QrCode;
+            
+            const config = { 
+                fps: 15, 
+                qrbox: { width: 250, height: 250 },
+                aspectRatio: 1.0
+            };
+
+            await html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                onScanSuccess
+            );
+            setIsScanning(true);
+        } catch (err) {
+            console.error("Error starting scanner:", err);
+            setError("Gagal mengakses kamera. Pastikan izin kamera telah diberikan.");
+            setIsCameraActive(false);
         }
-        await processBarcode(decodedText);
     };
 
-    const onScanFailure = (error) => {
-        // console.warn(`Code scan error = ${error}`);
+    const stopScanner = async () => {
+        if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+            try {
+                await html5QrCodeRef.current.stop();
+                html5QrCodeRef.current = null;
+                setIsScanning(false);
+            } catch (err) {
+                console.error("Error stopping scanner:", err);
+            }
+        }
+    };
+
+    const onScanSuccess = async (decodedText) => {
+        // Prevent rapid duplicate scans
+        if (scanCooldownRef.current) return;
+        if (lastScannedCodeRef.current === decodedText) {
+            // Optional: Show a "Already scanned" hint?
+            return;
+        }
+
+        scanCooldownRef.current = true;
+        await processBarcode(decodedText);
+        
+        // Cooldown for 3 seconds before allowing next scan of ANY code
+        // or just allow next scan of DIFFERENT code immediately
+        setTimeout(() => {
+            scanCooldownRef.current = false;
+        }, 2000);
     };
 
     const processBarcode = async (barcode) => {
@@ -74,23 +109,17 @@ export default function Scan({ auth, teachings }) {
             if (response.data.success) {
                 setSuccess(response.data.message);
                 setLastScanned(response.data.student);
+                lastScannedCodeRef.current = barcode;
                 setData('barcode_code', '');
                 
-                // Vibrate if supported
                 if (navigator.vibrate) {
                     navigator.vibrate(200);
-                }
-                
-                // If scanner is active, we can resume scanning after a delay
-                if (isCameraActive && scannerRef.current) {
-                    // setTimeout(() => scannerRef.current.resume(), 2000);
                 }
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Terjadi kesalahan saat memproses scan.');
             setData('barcode_code', '');
             
-            // Short vibrate for error
             if (navigator.vibrate) {
                 navigator.vibrate([100, 50, 100]);
             }
@@ -122,6 +151,7 @@ export default function Scan({ auth, teachings }) {
                                 setSuccess(null);
                                 setError(null);
                                 setLastScanned(null);
+                                lastScannedCodeRef.current = null;
                             }}
                             className="mt-6 w-full bg-indigo-700 border-indigo-500 text-white rounded-2xl py-4 focus:ring-white focus:border-white font-bold"
                         >
@@ -137,8 +167,10 @@ export default function Scan({ auth, teachings }) {
                             <div className="space-y-8">
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center space-x-2">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                                        <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Sistem Presensi Aktif</h4>
+                                        <div className={`w-2 h-2 rounded-full ${isScanning ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                                        <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">
+                                            {isScanning ? 'Scanner Aktif' : 'Scanner Nonaktif'}
+                                        </h4>
                                     </div>
                                     <button
                                         onClick={() => setIsCameraActive(!isCameraActive)}
@@ -157,9 +189,16 @@ export default function Scan({ auth, teachings }) {
                                 </div>
 
                                 {isCameraActive ? (
-                                    <div className="overflow-hidden rounded-2xl border-2 border-dashed border-indigo-200 bg-gray-50 p-2">
+                                    <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-indigo-200 bg-gray-900">
                                         <div id="reader" className="w-full"></div>
-                                        <p className="text-center text-xs text-gray-500 font-medium py-3">Posisikan QR Code siswa di tengah kotak scan.</p>
+                                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                                            <div className="w-64 h-64 border-2 border-indigo-500/50 rounded-3xl"></div>
+                                        </div>
+                                        <div className="absolute bottom-4 left-0 w-full text-center">
+                                            <p className="text-[10px] text-white/70 font-bold uppercase tracking-widest bg-black/40 backdrop-blur-sm inline-block px-4 py-1 rounded-full">
+                                                Posisikan QR di dalam kotak
+                                            </p>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="text-center py-4">
@@ -214,7 +253,7 @@ export default function Scan({ auth, teachings }) {
                                     <div className="mt-8 border-t border-gray-100 pt-8">
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Siswa Terakhir Discan</p>
                                         <div className="bg-gray-50 rounded-2xl p-4 flex items-center">
-                                            <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center font-bold text-indigo-600 mr-4 border border-gray-100">
+                                            <div className={`w-12 h-12 rounded-xl shadow-sm flex items-center justify-center font-bold mr-4 border border-gray-100 ${lastScanned.gender === 'Laki-laki' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}`}>
                                                 {lastScanned.name.charAt(0).toUpperCase()}
                                             </div>
                                             <div>
@@ -223,7 +262,7 @@ export default function Scan({ auth, teachings }) {
                                             </div>
                                             <div className="ml-auto">
                                                 <span className="px-3 py-1 bg-green-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg shadow-green-100">
-                                                    Hadir
+                                                    Berhasil
                                                 </span>
                                             </div>
                                         </div>
@@ -253,18 +292,12 @@ export default function Scan({ auth, teachings }) {
                 .animate-shake {
                     animation: shake 0.2s ease-in-out 0s 2;
                 }
-                #reader button {
-                    background-color: #4f46e5 !important;
-                    color: white !important;
-                    padding: 0.5rem 1rem !important;
-                    border-radius: 0.75rem !important;
-                    font-weight: bold !important;
-                    border: none !important;
-                    cursor: pointer !important;
-                    margin-top: 10px !important;
-                }
-                #reader img {
-                    display: none !important;
+                #reader video {
+                    width: 100% !important;
+                    height: 100% !important;
+                    object-fit: cover !important;
+                    border-radius: 1rem !important;
+                    transform: scaleX(-1) !important;
                 }
             `}} />
         </AuthenticatedLayout>

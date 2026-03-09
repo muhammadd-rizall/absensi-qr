@@ -22,7 +22,7 @@ class TeachingResource extends JsonResource
             'id' => $this->id,
             'teacher' => new TeacherResource($this->whenLoaded('teacher')),
             'subject' => new SubjectResource($this->whenLoaded('subject')),
-            'class' => new ClassResource($this->whenLoaded('schoolClass')),
+            'class' => new ClassResource($this->whenLoaded('class')),
             'day' => $this->day_of_week,
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,

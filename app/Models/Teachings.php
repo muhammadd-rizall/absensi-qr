@@ -32,6 +32,11 @@ class Teachings extends Model
         return $this->belongsTo(Classes::class, 'class_id');
     }
 
+    public function class(): BelongsTo
+    {
+        return $this->schoolClass();
+    }
+
     public function subject(): BelongsTo
     {
         return $this->belongsTo(Subjects::class, 'subject_id');

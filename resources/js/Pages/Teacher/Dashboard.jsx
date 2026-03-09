@@ -29,12 +29,11 @@ export default function Dashboard({ auth, teachings }) {
                                 
                                 <div className="flex gap-2">
                                     <Link 
-                                        href={route('teacher.class.detail', teaching.class_id)}
+                                        href={route('teacher.teaching.detail', teaching.id)}
                                         className="flex-1 text-center py-2.5 bg-gray-50 text-gray-700 text-xs font-bold rounded-xl hover:bg-gray-100 transition-colors"
                                     >
                                         Daftar Siswa
-                                    </Link>
-                                    <Link 
+                                    </Link>                                    <Link 
                                         href={route('teacher.scan', { teaching_id: teaching.id })}
                                         className="flex-1 text-center py-2.5 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-colors"
                                     >

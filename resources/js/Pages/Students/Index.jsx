@@ -85,6 +85,30 @@ export default function Index({ auth, students }) {
         });
     };
 
+    const downloadQR = () => {
+        const svg = document.querySelector('#student-qr-svg');
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+        
+        img.onload = () => {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            const pngFile = canvas.toDataURL("image/png");
+            
+            const downloadLink = document.createElement("a");
+            downloadLink.download = `QR_${selectedStudent?.name}_${selectedStudent?.nis}.png`;
+            downloadLink.href = pngFile;
+            downloadLink.click();
+        };
+        
+        img.src = "data:image/svg+xml;base64," + btoa(svgData);
+    };
+
     return (
         <AuthenticatedLayout
             user={auth.user}
@@ -196,6 +220,7 @@ export default function Index({ auth, students }) {
                         <div className="bg-white p-4 rounded-2xl shadow-inner inline-block border-2 border-indigo-100 mb-6">
                             {selectedStudent && (
                                 <QRCodeSVG 
+                                    id="student-qr-svg"
                                     value={selectedStudent.barcode_code} 
                                     size={160}
                                     level="H"
@@ -216,14 +241,22 @@ export default function Index({ auth, students }) {
                         </div>
                     </div>
 
-                    <div className="mt-8 flex gap-3 print:hidden">
-                        <SecondaryButton onClick={() => setIsCardModalOpen(false)} className="flex-1 !rounded-xl py-3 justify-center">Tutup</SecondaryButton>
-                        <PrimaryButton onClick={printCard} className="flex-1 !rounded-xl py-3 justify-center shadow-lg shadow-indigo-100">
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                            </svg>
-                            Cetak Kartu
-                        </PrimaryButton>
+                    <div className="mt-8 flex flex-col gap-3 print:hidden">
+                        <div className="flex gap-3">
+                            <PrimaryButton onClick={downloadQR} className="flex-1 !rounded-xl py-3 justify-center shadow-lg shadow-green-100 !bg-green-600 hover:!bg-green-700 border-none">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Download QR
+                            </PrimaryButton>
+                            <PrimaryButton onClick={printCard} className="flex-1 !rounded-xl py-3 justify-center shadow-lg shadow-indigo-100">
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 00-2 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                                Cetak Kartu
+                            </PrimaryButton>
+                        </div>
+                        <SecondaryButton onClick={() => setIsCardModalOpen(false)} className="w-full !rounded-xl py-3 justify-center">Tutup</SecondaryButton>
                     </div>
                 </div>
             </Modal>

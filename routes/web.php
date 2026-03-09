@@ -51,6 +51,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('teacher')->name('teacher.')->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\TeacherDashboardController::class, 'index'])->name('dashboard');
         Route::get('/class/{classId}', [\App\Http\Controllers\TeacherDashboardController::class, 'showClass'])->name('class.detail');
+        Route::get('/teaching/{teachingId}', [\App\Http\Controllers\TeacherDashboardController::class, 'teachingDetail'])->name('teaching.detail');
+        Route::post('/quick-update', [\App\Http\Controllers\TeacherDashboardController::class, 'quickUpdate'])->name('quick-update');
         Route::get('/scan', [\App\Http\Controllers\TeacherDashboardController::class, 'scan'])->name('scan');
         Route::post('/process-scan', [\App\Http\Controllers\TeacherDashboardController::class, 'processScan'])->name('process-scan');
     });
