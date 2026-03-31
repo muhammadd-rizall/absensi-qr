@@ -21,10 +21,14 @@ class ClassResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'level' => $this->level,
+            'room' => $this->room,
+            'students_count' => $this->students()->count(), // Use the new students relationship
             'academic_year' => new AcademicYearResource($this->whenLoaded('academicYear')),
             'homeroom_teacher' => new TeacherResource($this->whenLoaded('homeroomTeacher')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'students' => ClassResource::collection($this->whenLoaded('students')), // Explicitly load students relationship
         ];
     }
 }

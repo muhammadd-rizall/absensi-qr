@@ -10,8 +10,11 @@ export default function AuthenticatedLayout({ header, children }) {
 
     // Helper to check permissions in frontend
     const can = (permission) => {
-        if (user.roles.includes('super-admin')) return true;
-        return user.permissions.includes(permission);
+        const roles = user.roles || [];
+        const permissions = user.permissions || [];
+        
+        if (roles.includes('super-admin')) return true;
+        return permissions.includes(permission);
     };
 
     const navItems = [

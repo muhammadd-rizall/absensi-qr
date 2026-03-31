@@ -23,6 +23,8 @@ class ClassRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'level' => 'required|in:X,XI,XII',
+            'room' => 'nullable|string|max:255',
             'academic_year_id' => 'required|exists:academic_years,id',
             'homeroom_teacher_id' => 'nullable|exists:teachers,id',
         ];

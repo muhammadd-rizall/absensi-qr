@@ -23,7 +23,7 @@ Route::middleware(['auth'])->group(function () {
         
         $activeAcademicYear = \App\Models\AcademicYears::where('is_active', true)->first();
         
-        return Inertia::render('Dashboard', [
+        return Inertia::render('Dashboard/Index', [
             'stats' => [
                 'students' => \App\Models\Students::count(),
                 'students_male' => \App\Models\Students::where('gender', 'Laki-laki')->count(),
@@ -68,6 +68,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('permissions', \App\Http\Controllers\PermissionController::class)->middleware('permission:manage-roles');
     Route::resource('academic-years', \App\Http\Controllers\AcademicYearController::class)->middleware('permission:manage-academic-years');
     Route::resource('classes', \App\Http\Controllers\ClassController::class)->middleware('permission:manage-classes');
+    Route::post('classes/{class}/students', [\App\Http\Controllers\ClassController::class, 'addStudents'])->name('classes.students.add')->middleware('permission:manage-classes');
+    Route::delete('classes/{class}/students/{student}', [\App\Http\Controllers\ClassController::class, 'removeStudent'])->name('classes.students.remove')->middleware('permission:manage-classes');
     Route::resource('subjects', \App\Http\Controllers\SubjectController::class)->middleware('permission:manage-subjects');
     Route::resource('teachers', \App\Http\Controllers\TeacherController::class)->middleware('permission:manage-teachers');
     Route::resource('students', \App\Http\Controllers\StudentController::class)->middleware('permission:manage-students');

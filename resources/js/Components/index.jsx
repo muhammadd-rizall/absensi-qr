@@ -12,6 +12,6 @@ export { default as DangerButton } from './Molecules/DangerButton';
 export { default as NavLink } from './Molecules/NavLink';
 
 // Organisms
-export { default as Dropdown } from './organisms/Dropdown';
-export { default as ResponsiveNavLink } from './organisms/ResponsiveNavLink';
-export { default as Modal } from './organisms/Modal';
+export { default as Dropdown } from './Organisms/Dropdown';
+export { default as ResponsiveNavLink } from './Organisms/ResponsiveNavLink';
+export { default as Modal } from './Organisms/Modal';
